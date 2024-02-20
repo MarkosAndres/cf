@@ -1,0 +1,190 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Parameters:
+  MyLbUri:
+    Type: String
+    Default: "http://myLb-1346779641.us-east-1.elb.amazonaws.com:8080"
+  myHomePath:
+    Type: String
+    Default: "home1"
+  myPostPath:
+    Type: String
+    Default: "post"
+  apiGatewayRestPath:
+    Type: String
+    Default: "api"
+  schedulesRestPath:
+    Type: String
+    Default: "bankId"
+
+Resources:
+  MyApiGateway:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: MyApiCL1
+      Description: Some Desc for my API Gateway
+      EndpointConfiguration:
+        Types:
+          - PRIVATE
+      Policy:      
+        Statement:
+          - Effect: Allow
+            Principal: "*"
+            Action: execute-api:Invoke
+            Resource: "execute-api:/v1/GET/*"
+            Condition:
+              StringEquals:
+                "aws:SourceVpce": !Ref MyVPCEndpoint
+          - Effect: Deny
+            Principal: "*"
+            Action: execute-api:Invoke
+            Resource: "execute-api:/v1/GET/*"
+            Condition:
+              StringNotEquals:
+                "aws:SourceVpce": !Ref MyVPCEndpoint
+
+
+
+  MyApiResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId:
+        Ref: MyApiGateway
+      ParentId:
+        Fn::GetAtt:
+          - MyApiGateway
+          - RootResourceId
+      PathPart: testme
+
+  MyApiMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      HttpMethod: GET
+      ResourceId:
+        Ref: MyApiResource
+      RestApiId:
+        Ref: MyApiGateway
+      Integration:
+        IntegrationHttpMethod: GET
+        Type: HTTP
+        Uri: !Sub "${MyLbUri}/${myHomePath}"
+        PassthroughBehavior: WHEN_NO_MATCH
+        IntegrationResponses:
+          - StatusCode: 200
+      MethodResponses:
+        - StatusCode: 200
+          ResponseModels:
+            application/json: "Empty"
+          ResponseParameters:
+            method.response.header.Content-Type: true
+
+  MyApiGatewayMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      HttpMethod: POST
+      ResourceId: !Ref MyApiResource
+      RestApiId: !Ref MyApiGateway      
+      Integration:
+        IntegrationHttpMethod: POST
+        Type: HTTP        
+        Uri: !Sub "${MyLbUri}/${myPostPath}"
+        PassthroughBehavior: WHEN_NO_MATCH
+        IntegrationResponses:
+          - StatusCode: 200
+      MethodResponses:
+        - StatusCode: 200
+          ResponseModels:
+            application/json: "Empty"
+
+
+
+  MyApiResourceParams:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId:
+        Ref: MyApiGateway
+      ParentId:
+        Fn::GetAtt:
+          - MyApiGateway
+          - RootResourceId
+      PathPart: !Ref apiGatewayRestPath
+
+  MyApiResourceParamsSub:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref MyApiGateway
+      ParentId: !Ref MyApiResourceParams
+      PathPart: "{id}"  
+
+  MyApiMArkosMethod2:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      HttpMethod: GET
+      ResourceId: !Ref MyApiResourceParamsSub
+      RestApiId: !Ref MyApiGateway        
+      Integration:
+        IntegrationHttpMethod: GET
+        Type: HTTP
+        Uri: !Sub "${MyLbUri}/${schedulesRestPath}/{bankId}"
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestParameters: 
+          integration.request.querystring.name: "method.request.querystring.name"
+          integration.request.querystring.age: "method.request.querystring.age"
+          integration.request.path.bankId: "method.request.path.id"
+        IntegrationResponses:
+          - StatusCode: 200
+      RequestParameters:
+        method.request.querystring.name: true
+        method.request.querystring.age: false
+        method.request.path.id: true
+      MethodResponses:
+        - StatusCode: 200
+          ResponseModels:
+            application/json: "Empty"
+          ResponseParameters:
+            method.response.header.Content-Type: true
+
+
+
+
+  MyApiDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn:
+      - MyApiMethod
+      - MyApiMArkosMethod2
+      - MyApiGatewayMethod
+    Properties:
+      RestApiId: !Ref MyApiGateway
+      StageName: "v1"
+
+
+  MyVPCEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: vpc-0d0c73dcf8331fd0c # Replace MyVPC with the logical ID of your VPC
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.execute-api"
+      PrivateDnsEnabled: true
+      SecurityGroupIds:
+        - sg-01ac3286fb6662a7c  # Replace MyVPCSecurityGroup with the logical ID of your security group
+      SubnetIds:
+        - subnet-02ed46e3976a1e1bb
+        - subnet-0e3900d0030f7373c
+      VpcEndpointType: Interface
+
+#
+#  MyApiGatewayStage:
+#      Type: AWS::ApiGateway::Stage
+#      Properties:
+#        DeploymentId: !Ref MyApiDeployment
+#        RestApiId: !Ref MyApiGateway
+#        StageName: "v1"
+#        Description: "My API Gateway Stage Description"
+#        MethodSettings:
+#          - HttpMethod: "*"
+#            ResourcePath: "/*"
+#            ThrottlingBurstLimit: 500
+#            ThrottlingRateLimit: 1000
+
