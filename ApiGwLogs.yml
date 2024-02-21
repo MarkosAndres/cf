@@ -61,22 +61,6 @@ Resources:
           ResponseParameters:
             method.response.header.Content-Type: true
 
-  MyApiDeployment:
-    Type: AWS::ApiGateway::Deployment
-    DependsOn:
-      - MyApiMethod
-      - MyApiGatewayAccount
-    Properties:
-      RestApiId: !Ref MyApiGateway
-
-
-  MyApiGatewayLogs:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      LogGroupName: "/aws/api-gateway/markos/execution"
-      RetentionInDays: 30  # Adjust retention period as needed
-
-
   ApiLoggingRole:
     Type: AWS::IAM::Role
     Properties:
@@ -100,7 +84,13 @@ Resources:
     Properties:
       CloudWatchRoleArn: !GetAtt ApiLoggingRole.Arn
 
-  MyApiStageLogs:
+  MyApiGatewayLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: "/aws/api-gateway/markos/execution"
+      RetentionInDays: 30  # Adjust retention period as needed
+
+  MyApiStage:
     Type: AWS::ApiGateway::Stage
     # DependsOn:
     #   - MyApiGatewayLogs
@@ -112,7 +102,16 @@ Resources:
         - ResourcePath: "/*"
           HttpMethod: "*"
           LoggingLevel: INFO
-          MetricsEnabled: True
+          MetricsEnabled: 'true'
+          DataTraceEnabled: 'true'
       AccessLogSetting:
         DestinationArn: !GetAtt MyApiGatewayLogs.Arn
         Format: '$context.identity.sourceIp - - [$context.requestTime] "$context.httpMethod $context.resourcePath $context.protocol" $context.status $context.responseLength $context.requestId'
+
+  MyApiDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn:
+      - MyApiMethod
+      - MyApiGatewayAccount
+    Properties:
+      RestApiId: !Ref MyApiGateway
