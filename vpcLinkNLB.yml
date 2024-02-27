@@ -4,6 +4,7 @@ Parameters:
   MyLbUri:
     Type: String
     Default: "http://myNlb3-c6826fedc677e816.elb.us-east-1.amazonaws.com" # Replace
+  registerPath:
     Type: String
     Default: "register/"
 
@@ -12,11 +13,13 @@ Resources:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer    
     Properties:
       IpAddressType: ipv4
-      Name: MyNLB
+      Name: MyNlbCF
       Scheme: internal
       Subnets:
         - subnet-07853d5a263d95024  # Replace with your subnet ID(s)
         - subnet-0cb64a659d85449e7
+      SecurityGroups:
+        - sg-0eff66c263abcfa1b  # Add your desired security group ID here
       Type: network
 
   MyListener:
@@ -24,7 +27,7 @@ Resources:
     Properties:
       DefaultActions:
         - Type: forward
-          TargetGroupArn: arn:aws:elasticloadbalancing:us-east-1:524870267528:targetgroup/myTg3/b6e8d9567db9b1f3 # Replace with tg arn(s)
+          TargetGroupArn: arn:aws:elasticloadbalancing:us-east-1:524870267528:targetgroup/myTgCF/6e3c3e8e0f6d8c65 # Replace with tg arn(s)
       LoadBalancerArn: !Ref MyNLB
       Port: 80
       Protocol: TCP
@@ -63,7 +66,7 @@ Resources:
         ConnectionType: "VPC_LINK"
         ConnectionId: !Ref MyVpcLink
         Type: HTTP_PROXY
-        Uri: !Sub "${MyLbUri}/${registerPath}"
+        Uri: !Join ["", ["http://", !GetAtt "MyNLB.DNSName", "/", !Ref registerPath]]
         PassthroughBehavior: WHEN_NO_MATCH
         IntegrationResponses:
           - StatusCode: 200
@@ -131,8 +134,10 @@ Resources:
 
   MyVpcLink:
     Type: AWS::ApiGateway::VpcLink
+    DependsOn:
+      - MyNLB
     Properties:
       Name: MyVpcLinkNlb
       TargetArns:
-        - arn:aws:elasticloadbalancing:us-east-1:524870267528:loadbalancer/net/myNlb3/c6826fedc677e816
+        - !Ref MyNLB
 
