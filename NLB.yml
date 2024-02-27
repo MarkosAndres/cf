@@ -1,0 +1,31 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Parameters:
+  MyLbUri:
+    Type: String
+    Default: "http://myNlb3-c6826fedc677e816.elb.us-east-1.amazonaws.com" # Replace
+  registerPath:
+    Type: String
+    Default: "register/"
+
+Resources:
+  MyNLB:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer    
+    Properties:
+      IpAddressType: ipv4
+      Name: MyNLB
+      Scheme: internal
+      Subnets:
+        - subnet-07853d5a263d95024  # Replace with your subnet ID(s)
+        - subnet-0cb64a659d85449e7
+      Type: network
+
+  MyListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: arn:aws:elasticloadbalancing:us-east-1:524870267528:targetgroup/myTgCF/6e3c3e8e0f6d8c65 # Replace with tg arn(s)
+      LoadBalancerArn: !Ref MyNLB
+      Port: 80
+      Protocol: TCP
