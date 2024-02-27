@@ -1,0 +1,136 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Parameters:
+  MyLbUri:
+    Type: String
+    Default: "http://myalb-1946429271.us-east-1.elb.amazonaws.com"
+  registerPath:
+    Type: String
+    Default: "register/"
+
+Resources:
+  MyApiGateway:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: MyApiCL1
+      Description: Some Desc for my API Gateway
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+
+  MyApiResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId:
+        Ref: MyApiGateway
+      ParentId:
+        Fn::GetAtt:
+          - MyApiGateway
+          - RootResourceId
+      PathPart: api
+
+  MyApiMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      HttpMethod: GET
+      ResourceId:
+        Ref: MyApiResource
+      RestApiId:
+        Ref: MyApiGateway
+      Integration:
+        IntegrationHttpMethod: GET
+        Type: HTTP
+        Uri: !Sub "${MyLbUri}/${registerPath}"
+        PassthroughBehavior: WHEN_NO_MATCH
+        IntegrationResponses:
+          - StatusCode: 200
+      MethodResponses:
+        - StatusCode: 200
+          ResponseModels:
+            application/json: "Empty"
+          ResponseParameters:
+            method.response.header.Content-Type: true
+
+  MyApiResourceMock:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId:
+        Ref: MyApiGateway
+      ParentId: !Ref MyApiResource
+      PathPart: mock
+
+  MyApiMethodMock:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      HttpMethod: GET
+      ResourceId: !Ref MyApiResourceMock
+      RestApiId: !Ref MyApiGateway
+      AuthorizationType: NONE
+      Integration:
+        Type: MOCK
+        PassthroughBehavior: NEVER
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        IntegrationResponses:
+          - StatusCode: '200'
+            ResponseTemplates:
+              application/json: '{"testme": 123}'
+      MethodResponses:
+        - StatusCode: '200'
+
+  ApiLoggingRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Description: Allows the API to log errors to CloudWatch Logs
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - apigateway.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      Path: "/"
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs"
+
+  MyApiGatewayAccount:
+    Type: AWS::ApiGateway::Account
+    Properties:
+      CloudWatchRoleArn: !GetAtt ApiLoggingRole.Arn
+
+  MyApiGatewayLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: "/aws/api-gateway/markos/execution"
+      RetentionInDays: 30  # Adjust retention period as needed
+
+
+  MyApiStage:
+    Type: AWS::ApiGateway::Stage
+    # DependsOn:
+    #   - MyApiGatewayLogs
+    Properties:
+      DeploymentId: !Ref MyApiDeployment
+      RestApiId: !Ref MyApiGateway
+      StageName: "v1"
+      MethodSettings:
+        - ResourcePath: "/*"
+          HttpMethod: "*"
+          LoggingLevel: INFO
+          MetricsEnabled: 'true'
+          DataTraceEnabled: 'true'
+      AccessLogSetting:
+        DestinationArn: !GetAtt MyApiGatewayLogs.Arn
+        Format: '$context.identity.sourceIp - - [$context.requestTime] "$context.httpMethod $context.resourcePath $context.protocol" $context.status $context.responseLength $context.requestId'
+
+  MyApiDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn:
+      - MyApiMethod
+      - MyApiMethodMock
+      - MyApiGatewayAccount
+    Properties:
+      RestApiId: !Ref MyApiGateway
