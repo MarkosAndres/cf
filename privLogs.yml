@@ -27,7 +27,7 @@ Resources:
         Fn::GetAtt:
           - MyApiGateway
           - RootResourceId
-      PathPart: register
+      PathPart: api
 
   MyApiMethod:
     Type: AWS::ApiGateway::Method
@@ -52,7 +52,7 @@ Resources:
           ResponseParameters:
             method.response.header.Content-Type: true
 
-  MyApiResource:
+  MyApiResourceMock:
     Type: AWS::ApiGateway::Resource
     Properties:
       RestApiId:
@@ -63,11 +63,11 @@ Resources:
           - RootResourceId
       PathPart: mock
 
-  MyApiMethod:
+  MyApiMethodMock:
     Type: AWS::ApiGateway::Method
     Properties:
       HttpMethod: GET
-      ResourceId: !Ref MyApiResource
+      ResourceId: !Ref MyApiResourceMock
       RestApiId: !Ref MyApiGateway
       AuthorizationType: NONE
       Integration:
@@ -78,7 +78,7 @@ Resources:
         IntegrationResponses:
           - StatusCode: '200'
             ResponseTemplates:
-              application/json: '{}'
+              application/json: '{"testme": 123}'
       MethodResponses:
         - StatusCode: '200'
 
@@ -133,6 +133,7 @@ Resources:
     Type: AWS::ApiGateway::Deployment
     DependsOn:
       - MyApiMethod
+      - MyApiMethodMock
       - MyApiGatewayAccount
     Properties:
       RestApiId: !Ref MyApiGateway
