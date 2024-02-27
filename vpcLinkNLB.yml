@@ -1,0 +1,138 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Parameters:
+  MyLbUri:
+    Type: String
+    Default: "http://myNlb3-c6826fedc677e816.elb.us-east-1.amazonaws.com" # Replace
+    Type: String
+    Default: "register/"
+
+Resources:
+  MyNLB:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer    
+    Properties:
+      IpAddressType: ipv4
+      Name: MyNLB
+      Scheme: internal
+      Subnets:
+        - subnet-07853d5a263d95024  # Replace with your subnet ID(s)
+        - subnet-0cb64a659d85449e7
+      Type: network
+
+  MyListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: arn:aws:elasticloadbalancing:us-east-1:524870267528:targetgroup/myTg3/b6e8d9567db9b1f3 # Replace with tg arn(s)
+      LoadBalancerArn: !Ref MyNLB
+      Port: 80
+      Protocol: TCP
+
+  MyApiGateway:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: MyApiCL1
+      Description: Some Desc for my API Gateway
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+
+  MyApiResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId:
+        Ref: MyApiGateway
+      ParentId:
+        Fn::GetAtt:
+          - MyApiGateway
+          - RootResourceId
+      PathPart: nlb
+
+  MyApiMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      HttpMethod: GET
+      ResourceId:
+        Ref: MyApiResource
+      RestApiId:
+        Ref: MyApiGateway
+      Integration:
+        IntegrationHttpMethod: GET
+        ConnectionType: "VPC_LINK"
+        ConnectionId: !Ref MyVpcLink
+        Type: HTTP_PROXY
+        Uri: !Sub "${MyLbUri}/${registerPath}"
+        PassthroughBehavior: WHEN_NO_MATCH
+        IntegrationResponses:
+          - StatusCode: 200
+      MethodResponses:
+        - StatusCode: 200
+          ResponseModels:
+            application/json: "Empty"
+          ResponseParameters:
+            method.response.header.Content-Type: true
+
+  ApiLoggingRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Description: Allows the API to log errors to CloudWatch Logs
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - apigateway.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      Path: "/"
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs"
+
+  MyApiGatewayAccount:
+    Type: AWS::ApiGateway::Account
+    Properties:
+      CloudWatchRoleArn: !GetAtt ApiLoggingRole.Arn
+
+  MyApiGatewayLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: "/aws/api-gateway/markos/execution"
+      RetentionInDays: 30  # Adjust retention period as needed
+
+
+  MyApiStage:
+    Type: AWS::ApiGateway::Stage
+    # DependsOn:
+    #   - MyApiGatewayLogs
+    Properties:
+      DeploymentId: !Ref MyApiDeployment
+      RestApiId: !Ref MyApiGateway
+      StageName: "v1"
+      MethodSettings:
+        - ResourcePath: "/*"
+          HttpMethod: "*"
+          LoggingLevel: INFO
+          MetricsEnabled: 'true'
+          DataTraceEnabled: 'true'
+      AccessLogSetting:
+        DestinationArn: !GetAtt MyApiGatewayLogs.Arn
+        Format: '$context.identity.sourceIp - - [$context.requestTime] "$context.httpMethod $context.resourcePath $context.protocol" $context.status $context.responseLength $context.requestId'
+
+  MyApiDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn:
+      - MyApiMethod
+      - MyApiGatewayAccount
+    Properties:
+      RestApiId: !Ref MyApiGateway
+
+  MyVpcLink:
+    Type: AWS::ApiGateway::VpcLink
+    Properties:
+      Name: MyVpcLinkNlb
+      TargetArns:
+        - arn:aws:elasticloadbalancing:us-east-1:524870267528:loadbalancer/net/myNlb3/c6826fedc677e816
+
