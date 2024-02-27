@@ -13,11 +13,13 @@ Resources:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer    
     Properties:
       IpAddressType: ipv4
-      Name: MyNLB
+      Name: MyNlbCF
       Scheme: internal
       Subnets:
         - subnet-07853d5a263d95024  # Replace with your subnet ID(s)
         - subnet-0cb64a659d85449e7
+      SecurityGroups:
+        - sg-0eff66c263abcfa1b  # Add your desired security group ID here
       Type: network
 
   MyListener:
