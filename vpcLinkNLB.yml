@@ -140,4 +140,3 @@ Resources:
       Name: MyVpcLinkNlb
       TargetArns:
         - !Ref MyNLB
-
