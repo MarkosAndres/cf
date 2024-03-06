@@ -14,12 +14,12 @@ Resources:
     Properties:
       IpAddressType: ipv4
       Name: MyNlbCF
-      Scheme: internal
+      Scheme: internet-facing
       Subnets:
-        - subnet-07853d5a263d95024  # Replace with your subnet ID(s)
-        - subnet-0cb64a659d85449e7
+        - subnet-0982009910a66152e  # Replace with your subnet ID(s)
+        - subnet-06c59794f0f208de8
       SecurityGroups:
-        - sg-0eff66c263abcfa1b  # Add your desired security group ID here
+        - sg-0550cc22c58972300  # Add your desired security group ID here
       Type: network
 
   MyListener:
@@ -27,7 +27,7 @@ Resources:
     Properties:
       DefaultActions:
         - Type: forward
-          TargetGroupArn: arn:aws:elasticloadbalancing:us-east-1:524870267528:targetgroup/myTgCF/6e3c3e8e0f6d8c65 # Replace with tg arn(s)
+          TargetGroupArn: arn:aws:elasticloadbalancing:us-east-1:313345638738:targetgroup/myTg/9118e8e373303ae1 # Replace with tg arn(s)
       LoadBalancerArn: !Ref MyNLB
       Port: 80
       Protocol: TCP
@@ -65,7 +65,7 @@ Resources:
         IntegrationHttpMethod: GET
         ConnectionType: "VPC_LINK"
         ConnectionId: !Ref MyVpcLink
-        Type: HTTP_PROXY
+        Type: HTTP
         Uri: !Join ["", ["http://", !GetAtt "MyNLB.DNSName", "/", !Ref registerPath]]
         PassthroughBehavior: WHEN_NO_MATCH
         IntegrationResponses:

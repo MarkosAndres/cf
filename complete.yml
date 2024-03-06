@@ -1,0 +1,54 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Parameters:
+  vipcid:
+    Type: String
+    Default: "vpc-0c6852a0a1a8d4170" # Replace
+
+Resources:
+  NlbSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: myNlbSgCF
+      GroupDescription: Security group for NLB
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: '-1'
+          CidrIp: 0.0.0.0/0
+      VpcId: !Ref vipcid
+
+  Ec2SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: myEc2SgCF
+      GroupDescription: Security group for Ec2
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          SourceSecurityGroupId: !Ref NlbSecurityGroup
+      SecurityGroupEgress:
+        - IpProtocol: '-1'
+          CidrIp: 0.0.0.0/0
+      VpcId: !Ref vipcid
+
+  MyTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckPath: /register/
+      HealthCheckIntervalSeconds: 6
+      HealthCheckPort: 80
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 3
+      UnhealthyThresholdCount: 3
+      Name: MyTargetGroupCF
+      TargetType: instance
+      Protocol: HTTP
+      Port: 80
+      VpcId: !Ref vipcid
+      

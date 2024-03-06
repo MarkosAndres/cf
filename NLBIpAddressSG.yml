@@ -1,0 +1,35 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Parameters:
+  vipcid:
+    Type: String
+    Default: "vpc-03457ed536007e7ed" # Replace
+
+Resources:
+  MyNLB:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer    
+    Properties:
+      IpAddressType: ipv4
+      Name: MyNlbCF
+      Scheme: internal
+      Subnets:
+        - subnet-0d5441a1f4886ef26  # Replace with your subnet ID(s)
+        - subnet-03d1e8eaea0fa502b
+      # SecurityGroups:
+      #   - sg-025b46faa570187b0  # Add your desired security group ID here
+      Type: network
+
+  Ec2SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: myEc2SgCF
+      GroupDescription: Security group for Ec2
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: !GetAtt MyVPC.CidrBlock
+      SecurityGroupEgress:
+        - IpProtocol: '-1'
+          CidrIp: 0.0.0.0/0
+      VpcId: !Ref vipcid

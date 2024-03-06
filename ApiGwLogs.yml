@@ -3,7 +3,7 @@ AWSTemplateFormatVersion: '2010-09-09'
 Parameters:
   MyLbUri:
     Type: String
-    Default: "http://myLb-648176999.us-east-1.elb.amazonaws.com:8080"
+    Default: "http://mytg-ded6222d8bc14f2c.elb.us-east-1.amazonaws.com"
   myHomePath:
     Type: String
     Default: "home1"
@@ -49,8 +49,8 @@ Resources:
         Ref: MyApiGateway
       Integration:
         IntegrationHttpMethod: GET
-        Type: HTTP
-        Uri: !Sub "${MyLbUri}/${myHomePath}"
+        Type: HTTP_PROXY
+        Uri: !Sub "${MyLbUri}/register/"
         PassthroughBehavior: WHEN_NO_MATCH
         IntegrationResponses:
           - StatusCode: 200
@@ -60,6 +60,40 @@ Resources:
             application/json: "Empty"
           ResponseParameters:
             method.response.header.Content-Type: true
+
+  # MyApiResource2:
+  #   Type: AWS::ApiGateway::Resource
+  #   Properties:
+  #     RestApiId:
+  #       Ref: MyApiGateway
+  #     ParentId:
+  #       Fn::GetAtt:
+  #         - MyApiGateway
+  #         - RootResourceId
+  #     PathPart: logs2
+
+  # MyApiMethod2:
+  #   Type: AWS::ApiGateway::Method
+  #   Properties:
+  #     AuthorizationType: NONE
+  #     HttpMethod: GET
+  #     ResourceId:
+  #       Ref: MyApiResource2
+  #     RestApiId:
+  #       Ref: MyApiGateway
+  #     Integration:
+  #       IntegrationHttpMethod: GET
+  #       Type: HTTP_PROXY
+  #       Uri: !Sub "${MyLbUri}/testme/"
+  #       PassthroughBehavior: WHEN_NO_MATCH
+  #       IntegrationResponses:
+  #         - StatusCode: 200
+  #     MethodResponses:
+  #       - StatusCode: 200
+  #         ResponseModels:
+  #           application/json: "Empty"
+  #         ResponseParameters:
+  #           method.response.header.Content-Type: true      
 
   ApiLoggingRole:
     Type: AWS::IAM::Role
@@ -95,7 +129,7 @@ Resources:
     # DependsOn:
     #   - MyApiGatewayLogs
     Properties:
-      DeploymentId: !Ref MyApiDeployment
+      DeploymentId: !Ref MyApiDeployment2
       RestApiId: !Ref MyApiGateway
       StageName: "v1"
       MethodSettings:
@@ -108,10 +142,11 @@ Resources:
         DestinationArn: !GetAtt MyApiGatewayLogs.Arn
         Format: '$context.identity.sourceIp - - [$context.requestTime] "$context.httpMethod $context.resourcePath $context.protocol" $context.status $context.responseLength $context.requestId'
 
-  MyApiDeployment:
+  MyApiDeployment2:
     Type: AWS::ApiGateway::Deployment
     DependsOn:
       - MyApiMethod
       - MyApiGatewayAccount
     Properties:
+      Description: hola2
       RestApiId: !Ref MyApiGateway

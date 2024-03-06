@@ -3,7 +3,7 @@ AWSTemplateFormatVersion: '2010-09-09'
 Parameters:
   MyLbUri:
     Type: String
-    Default: "http://myalb-1946429271.us-east-1.elb.amazonaws.com"
+    Default: "http://ec2-3-88-242-248.compute-1.amazonaws.com"
   registerPath:
     Type: String
     Default: "register/"
@@ -118,7 +118,6 @@ Resources:
     Properties:
       DeploymentId: !Ref MyApiDeployment
       RestApiId: !Ref MyApiGateway
-      StageName: "v1"
       MethodSettings:
         - ResourcePath: "/*"
           HttpMethod: "*"

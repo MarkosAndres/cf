@@ -1,0 +1,48 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Resources:
+  # MyNLB1:
+  #   Type: AWS::ElasticLoadBalancingV2::LoadBalancer    
+  #   Properties:
+  #     IpAddressType: ipv4
+  #     Name: MyNlbCF1
+  #     Scheme: internal
+  #     Subnets:
+  #       - subnet-0f105388cd220b4c4  # Replace with your subnet ID(s)
+  #       - subnet-0b25e1d56f4632556
+  #     SecurityGroups:
+  #       - sg-05557d5d83d780d06  # Add your desired security group ID here
+  #     Type: network
+
+  # MyListener1:
+  #   Type: AWS::ElasticLoadBalancingV2::Listener
+  #   Properties:
+  #     DefaultActions:
+  #       - Type: forward
+  #         TargetGroupArn: arn:aws:elasticloadbalancing:us-east-1:730335520124:targetgroup/tg1/b55c5dc5b628da53 # Replace with tg arn(s)
+  #     LoadBalancerArn: !Ref MyNLB1
+  #     Port: 80
+  #     Protocol: TCP
+
+  MyNLB2:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer    
+    Properties:
+      IpAddressType: ipv4
+      Name: MyNlbCF2
+      Scheme: internal
+      Subnets:
+        - subnet-0f105388cd220b4c4  # Replace with your subnet ID(s)
+        - subnet-0b25e1d56f4632556
+      SecurityGroups:
+        - sg-0b6c2ae66ddd47308  # Add your desired security group ID here
+      Type: network
+
+  MyListener2:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: arn:aws:elasticloadbalancing:us-east-1:730335520124:targetgroup/tg2/c1bb5d430381c40b # Replace with tg arn(s)
+      LoadBalancerArn: !Ref MyNLB2
+      Port: 80
+      Protocol: TCP
