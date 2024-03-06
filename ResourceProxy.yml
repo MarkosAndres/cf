@@ -3,7 +3,7 @@ AWSTemplateFormatVersion: '2010-09-09'
 Parameters:
   MyLbUri:
     Type: String
-    Default: "http://mytg-ded6222d8bc14f2c.elb.us-east-1.amazonaws.com"
+    Default: "http://nlb-9312e1672d30c580.elb.us-east-1.amazonaws.com:8080"
   myHomePath:
     Type: String
     Default: "home1"
@@ -38,11 +38,40 @@ Resources:
           - RootResourceId
       PathPart: !Ref apiGatewayRestPath
 
-  MyApiResourceParamsSub:
+  MyApiResourceProxy:
     Type: AWS::ApiGateway::Resource
     Properties:
       RestApiId: !Ref MyApiGateway
       ParentId: !Ref MyApiResourceParams
+      PathPart: "{proxy+}"
+
+  MyApiProxyResourceMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      HttpMethod: ANY
+      ResourceId: !Ref MyApiResourceProxy
+      RestApiId: !Ref MyApiGateway
+      Integration:
+        IntegrationHttpMethod: ANY
+        Type: HTTP_PROXY
+        Uri: "http://nlb-9312e1672d30c580.elb.us-east-1.amazonaws.com:8080/{proxy}"
+        PassthroughBehavior: WHEN_NO_MATCH
+      MethodResponses:
+        - StatusCode: 200
+
+  MyApiResourceOutbound:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref MyApiGateway
+      ParentId: !Ref MyApiResourceParams
+      PathPart: out  
+
+  MyApiResourceParamsSub:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref MyApiGateway
+      ParentId: !Ref MyApiResourceOutbound
       PathPart: "{id}"  
 
   MyApiMArkosMethod2:
@@ -55,7 +84,7 @@ Resources:
       Integration:
         IntegrationHttpMethod: GET
         Type: HTTP_PROXY
-        Uri: !Sub "http://nlb-940e8719651afb94.elb.us-east-1.amazonaws.com:8080/api/outbound/v1/schedules/bankId/{bankId}"
+        Uri: !Sub "http://nlb-9312e1672d30c580.elb.us-east-1.amazonaws.com:8080/api/outbound/v1/schedules/bankId/{bankId}"
         PassthroughBehavior: WHEN_NO_MATCH
         RequestParameters: 
         #   integration.request.querystring.name: "method.request.querystring.name"
